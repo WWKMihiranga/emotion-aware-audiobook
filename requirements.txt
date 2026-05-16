@@ -1,0 +1,54 @@
+# ====================================================================
+# Phases 1–5 dependencies
+# Phase 1: text loading & segmentation
+# Phase 2: emotion analysis (transformers + torch)
+# Phase 3: emotion-aware summarization (same models, different head)
+# Phase 4: TTS — LIGHT deps only (pydub, scipy). The heavy TTS models
+#          (Coqui TTS, transformers/Bark) are installed inside the Week 4+5
+#          notebook because they're huge (~2GB) and only matter on Colab.
+# Phase 5: audio assembly (pydub + ffmpeg)
+#
+# Notes on versions:
+# - torch is pinned to a CPU/MPS-friendly version. On Apple Silicon
+#   you'll automatically get the MPS-accelerated build via pip — no
+#   special index URL needed since torch 2.0+.
+# - transformers + tokenizers must move together; pinning both.
+# ====================================================================
+
+# --- Phase 1: text processing (unchanged) ---
+nltk==3.9.1
+regex==2024.11.6
+
+# --- Notebook environment ---
+jupyter==1.1.1
+ipykernel==6.29.5
+
+# --- Plotting (now actually used in Phase 2 for the emotional arc) ---
+matplotlib==3.9.2
+
+# --- Utilities ---
+tqdm==4.67.1
+requests==2.32.3
+
+# --- Phases 2 + 3: ML models ---
+# torch 2.4.x works well on M-series Macs (MPS backend) and is stable
+# with the transformers version below.
+torch==2.4.1
+transformers==4.46.3
+tokenizers==0.20.3
+
+# sentencepiece — required by BART tokenizer used in summarization
+sentencepiece==0.2.0
+
+# numpy — pinned to avoid the 2.x breakage some torch wheels hit
+numpy==1.26.4
+
+# --- Phase 4-5: audio assembly (light deps) ---
+# Heavy TTS models (Coqui TTS, Bark) are installed inside the Week 4+5
+# notebook, NOT here, because they pull ~2 GB of CUDA-specific wheels
+# that you only want on Colab anyway.
+pydub==0.25.1        # MP3 stitching (calls out to ffmpeg under the hood)
+scipy==1.13.1        # WAV I/O for per-segment audio files
+
+# --- Phase 6: integration polish ---
+mutagen==1.47.0      # ID3 tagging — used to embed cover art in MP3
