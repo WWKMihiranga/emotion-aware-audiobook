@@ -1,256 +1,334 @@
-# Emotional Audiobook
+<div align="center">
 
-> Turning storybooks into audiobooks that *preserve emotion* — an AI pipeline that
-> reads a story, understands its emotional arc, and narrates it with a voice that
-> follows that arc.
+# 🎙️ Emotional Audiobook
 
-Most AI summarizers and text-to-speech systems flatten emotion. Summarizers
-optimize for information density and throw away the emotional turning points.
-TTS engines read everything in the same even tone. This project is an
-experiment in doing the opposite: keeping the *feeling* of a story intact all
-the way from raw text to final audio.
+### *Turn any storybook into an audiobook that **feels** the story - voice tone tracks the emotional arc, line by line.*
 
----
+<p>
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/PyTorch-2.4-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch"/>
+  <img src="https://img.shields.io/badge/🤗_Transformers-4.46-FFD21E?style=for-the-badge" alt="Transformers"/>
+  <img src="https://img.shields.io/badge/Coqui_XTTS--v2-Voice-9B59B6?style=for-the-badge" alt="XTTS"/>
+  <img src="https://img.shields.io/badge/Suno_Bark-Expressive-FF6F61?style=for-the-badge" alt="Bark"/>
+  <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge" alt="License"/>
+</p>
 
-## What it does
+<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbW9jMjlxbXRsdnlpejcxMjM2bmV4a2xicXlhMnpobXh4aTExdTlndSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/DN5YhRGMPWMpQ9TMfC/giphy.gif" width="420" alt="Reading book animation"/>
 
-Given a plain-text story, the pipeline:
-
-1. **Cleans and segments** the text into sentences and paragraphs
-2. **Classifies the emotion** of every sentence (7 emotions + confidence)
-3. **Builds an emotion-aware summary** that keeps the emotional peaks verbatim
-   and compresses only the connective tissue
-4. **Synthesizes expressive audio** — a fast engine narrates the bridges, a
-   more expressive engine performs the emotional peaks
-5. **Assembles a final MP3** with synced subtitles and emotion-arc cover art
-
-The result is a condensed audiobook that still *feels* like the original story.
+</div>
 
 ---
 
-## The core idea: "Anchor and Compress"
+## 💡 The Idea in 30 Seconds
 
-The interesting part of this project is the summarization strategy. Standard
-abstractive summarizers (BART, T5, etc.) are trained to maximize information
-density — which means they systematically discard emotional nuance, because a
-sentence like *"She wept"* carries little *information* even though it may be
-the emotional core of a scene.
+Most text-to-speech audiobooks sound **flat**. A heartbreaking line and a weather report are read in the exact same voice. This project fixes that.
 
-This pipeline takes a different approach:
+It reads a story, **figures out what each sentence feels like** (joy, fear, sadness, surprise…), and uses that emotional map to drive a smarter narration - calm voice for narration, an expressive voice for the dramatic moments - automatically.
 
-```
-1. Score every sentence by emotional intensity      (intensity = 1 − P(neutral))
-2. Select "anchor" sentences — the emotional peaks   (top 20%, with floors/ceilings)
-3. Summarize only the text BETWEEN anchors           (DistilBART on the "bridges")
-4. Stitch anchors (verbatim) + bridges (compressed)  back together in order
-```
-
-Every emotional turning point survives word-for-word. Only the narrative
-connective tissue gets compressed. The summary reads faster but keeps the
-story's emotional shape.
-
-This same anchor/bridge structure then drives the TTS stage: anchors are routed
-to a more expressive voice engine, bridges to a faster one — roughly mirroring
-how a human narrator reads filler evenly and "performs" the dramatic moments.
+> **In one command:** raw `.txt` → emotion-aware MP3 audiobook + synced subtitles + a visual "emotion arc" of the whole story used as the cover art.
 
 ---
 
-## Pipeline architecture
+## 🎬 See It In Action
+
+The pipeline reads O. Henry's *The Gift of the Magi* and produces this **emotional intensity arc** - every peak is a dramatic moment the system will narrate with extra expression:
+
+<div align="center">
+  <img src="outputs/gift_of_the_magi_intensity.png" alt="Emotional intensity arc" width="90%"/>
+  <br/>
+  <em>↑ Each peak = a dramatic moment. The dots show which emotion is dominant at that point.</em>
+</div>
+
+<br/>
+
+And here is the **full emotion distribution** across the story - anger, fear, joy, sadness and more, sentence by sentence:
+
+<div align="center">
+  <img src="outputs/gift_of_the_magi_arc.png" alt="Emotion distribution arc" width="90%"/>
+  <br/>
+  <em>↑ A stacked view of all seven emotions. You can literally see the story's mood shift.</em>
+</div>
+
+---
+
+## 🌟 Why This Matters
+
+Imagine you're listening to your favourite novel on a long drive. With most TTS audiobooks today, the narrator's voice is robotic and unchanging - even the scariest, saddest or happiest passages all sound the same. It's like watching a movie where the soundtrack never changes.
+
+**This project teaches a computer to read with feeling.** It does three things a human narrator does naturally:
+
+1. 📖 **Reads the story carefully** and decides which parts are emotional and which are just connecting plot.
+2. ❤️ **Holds onto the emotional moments** word-for-word, while gently condensing the in-between parts (so you don't lose the punch).
+3. 🎤 **Switches narration style** - calm and clear for the normal parts, expressive and dramatic for the emotional peaks.
+
+The result is an MP3 you can play in any music app, complete with synced subtitles and a custom cover image that visualises the story's emotional journey.
+
+---
+
+## 🧠 Why This Matters (Technical Version)
+
+This is a **production-style ML pipeline** that combines four research areas into one cohesive system:
+
+| Discipline | Component | What it solves |
+|---|---|---|
+| **NLP – Classification** | DistilRoBERTa emotion model (7-class) | Tagging every sentence with an emotion + confidence distribution |
+| **NLP – Summarization** | DistilBART (CNN/DailyMail) + custom *anchor-and-compress* strategy | Standard summarizers strip emotional nuance because it's not "informative" - we preserve emotional peaks verbatim and only compress the connective tissue between them |
+| **Generative Speech – Consistency** | Coqui **XTTS-v2** | A fast, consistent narrator voice for ~80% of the text |
+| **Generative Speech – Expression** | Suno **Bark** with emotion-conditioned cues (`[sighs]`, `[gasps]`, `[laughs softly]`) | Re-synthesises the top 20% most emotional sentences with a dramatically more expressive model |
+| **Audio Engineering** | `pydub` + `ffmpeg` + custom dBFS trailing-silence trim + `mutagen` ID3 tagging | Stitches clips, fixes Bark's known trailing-noise artefact, exports MP3 with embedded cover art |
+
+The result: **one CLI command** turns a `.txt` file into a fully produced audiobook with synced SRT subtitles.
+
+---
+
+## ⚙️ Architecture
 
 ```
-            ┌──────────────────────────────────────────────┐
- story.txt ─▶  Phase 1 — Text loading & segmentation        ─▶ segmented.json
-            │  Strip boilerplate, extract single story from │
-            │  anthologies, split into sentences (NLTK)     │
-            └──────────────────────────────────────────────┘
+            ┌─────────────────────────────────────────────────────┐
+            │  Phase 1 · Ingestion                                │
+ story.txt ─▶  Strip Gutenberg boilerplate · NLTK sentence split ─▶ segmented.json
+            │  Optional: extract named section from anthologies   │
+            └─────────────────────────────────────────────────────┘
                               │
-            ┌──────────────────────────────────────────────┐
-            │  Phase 2 — Emotion analysis                   │
- analyzed.json ◀  DistilRoBERTa 7-emotion classifier;       ─▶ emotion arc plots
-            │  per-sentence label + full distribution       │
-            └──────────────────────────────────────────────┘
+                              ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Phase 2 · Emotion Analysis                         │
+            │  DistilRoBERTa-7 · per-sentence top label + full    │
+analyzed.json◀  distribution · plots intensity arc & emotion     ─▶ intensity.png, arc.png
+            │  distribution as PNGs                               │
+            └─────────────────────────────────────────────────────┘
                               │
-            ┌──────────────────────────────────────────────┐
-            │  Phase 3 — Emotion-aware summarization        │
- summary.json ◀  "Anchor and compress": keep emotional      │
-            │  peaks verbatim, summarize bridges (DistilBART)│
-            └──────────────────────────────────────────────┘
+                              ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Phase 3 · Emotion-Aware Summarisation              │
+ summary.json◀  "Anchor & Compress":                              │
+            │   · Pick anchors (top 20% by 1 − P(neutral))        │
+            │   · Compress bridges between anchors with DistilBART│
+            │   · Stitch: anchors verbatim + summarised bridges   │
+            └─────────────────────────────────────────────────────┘
                               │
-            ┌──────────────────────────────────────────────┐
-            │  Phase 4 — Dual-engine TTS                    │
-   wavs/ ◀──   Bridges → XTTS-v2 (fast, consistent)         │
-            │  Anchors → Bark (expressive, emotion cues)    │
-            └──────────────────────────────────────────────┘
+                              ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Phase 4 · Dual-Engine TTS  (GPU)                   │
+   wavs/  ◀──  Bridges  → XTTS-v2  (fast, consistent narrator)   ─▶ NNNN_slug.wav
+            │  Anchors  → Bark     (expressive, cued by emotion)  │
+            │  Automatic fallback to XTTS if Bark fails           │
+            └─────────────────────────────────────────────────────┘
                               │
-            ┌──────────────────────────────────────────────┐
-            │  Phase 5 + 6 — Assembly & polish              │
- story.mp3 ◀  Stitch segments, generate synced SRT          ─▶ story.srt
-            │  subtitles, embed emotion-arc cover art       │
-            └──────────────────────────────────────────────┘
+                              ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Phase 5 · Audio Assembly + Polish                  │
+   story.mp3◀  Trailing-silence trim (Bark noise) · stitch with  ─▶ story.srt
+            │  350ms / 600ms gaps · MP3 export · embed intensity  │
+            │  arc as ID3 APIC cover art · generate synced SRT    │
+            └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Models used
+## 🎯 Key Engineering Highlights
 
-| Stage | Model | Why |
-|-------|-------|-----|
-| Emotion analysis | `j-hartmann/emotion-english-distilroberta-base` | 7-emotion classifier, ~330 MB, CPU-friendly |
-| Summarization | `sshleifer/distilbart-cnn-12-6` | Distilled BART, ~2× faster than full BART, good at narrative compression |
-| TTS (bridges) | Coqui XTTS-v2 | Fast, consistent narrator voice |
-| TTS (anchors) | Suno Bark | More expressive; supports non-verbal cues (`[sighs]`, `[gasps]`) |
+These are the bits I'm most proud of and would be happy to walk through in an interview:
 
-All models are open-source and run locally — no paid APIs required.
+<details>
+<summary><strong>🎯 The "Anchor &amp; Compress" Summariser</strong> - solving a real flaw in off-the-shelf summarisers</summary>
+
+<br/>
+
+Standard summarisers (BART, T5) optimise for **information density** - they strip emotional content because it isn't factually "informative". For a story, the emotional turning points *are* the point.
+
+My fix:
+1. From the Phase 2 emotion scores, identify **anchor sentences** - the top 20% by emotional intensity (`1 − P(neutral)`).
+2. Between anchors, run normal abstractive summarisation to compress the connective tissue.
+3. Stitch anchors back in **verbatim** so every emotional beat survives.
+
+The summary keeps every emotional turn while dropping filler. See [`src/summarizer.py`](src/summarizer.py).
+
+</details>
+
+<details>
+<summary><strong>🎙️ Dual-Engine TTS Routing</strong> - mimicking how human narrators actually work</summary>
+
+<br/>
+
+Human audiobook narrators read most text in a neutral register and only "perform" at dramatic moments. The pipeline does the same:
+
+- **XTTS-v2** synthesises every segment - fast (~1–3s/segment on a T4 GPU), consistent voice.
+- **Bark** *re-synthesises only the anchor segments* with a bracketed emotion cue derived from the segment's label (`[gasps]` for fear, `[laughs softly]` for joy, etc.).
+- If Bark fails or times out, the original XTTS render is kept - graceful degradation, no broken audiobooks.
+
+See [`src/tts_engine.py`](src/tts_engine.py).
+
+</details>
+
+<details>
+<summary><strong>🔇 Trailing-Silence Trim</strong> - fixing a known Bark artefact in audio</summary>
+
+<br/>
+
+Bark frequently appends 1–3 seconds of humming/static after the actual speech ends. Most audiobook stitchers ignore this; mine doesn't.
+
+The `_trim_trailing_silence` function walks **backwards** from the end of each Bark WAV in 50ms windows. Once it hits a window above −40 dBFS (real audio), it keeps 100ms of buffer and truncates the rest. Only kicks in when ≥200ms would be removed, so natural pauses survive. XTTS clips skip the trim entirely.
+
+See [`src/audio_assembler.py`](src/audio_assembler.py).
+
+</details>
+
+<details>
+<summary><strong>♻️ Idempotent Phased Caching</strong> - laptop ↔ Colab workflow without re-running anything</summary>
+
+<br/>
+
+Each phase writes its output to disk and skips itself on rerun if the output already exists. That means the realistic dev loop is:
+
+1. Run phases 1–3 on a Mac (CPU is fine, ~5 min).
+2. Sync to Google Drive → open in Colab with GPU.
+3. Run phases 4–5 there (only the GPU-heavy ones execute; 1–3 are cached).
+4. Sync back to add polish or regenerate the cover.
+
+A `--force-rerun` flag exists for when you actually want to start fresh. See [`src/pipeline.py`](src/pipeline.py).
+
+</details>
+
+<details>
+<summary><strong>🎨 Generated Cover Art</strong> - the emotion arc becomes the album cover</summary>
+
+<br/>
+
+The intensity-arc PNG generated in Phase 2 is embedded into the final MP3 as an ID3 APIC frame (the standard for MP3 cover art) via `mutagen`. Title/Artist/Album metadata is set so the file appears properly in any audio library. Idempotent: re-running doesn't duplicate frames.
+
+So the audiobook's "album cover" is literally a graph of its own emotional journey. 📈
+
+</details>
 
 ---
 
-## Project structure
+## 🚀 Quickstart
 
-```
-emotional_audiobook/
-├── src/
-│   ├── story_downloader.py    # Fetch public-domain test stories (Project Gutenberg)
-│   ├── text_loader.py         # Clean text, strip boilerplate, extract anthology sections
-│   ├── segmenter.py           # Sentence/paragraph segmentation (NLTK)
-│   ├── emotion_analyzer.py    # Phase 2 — per-sentence emotion classification
-│   ├── emotion_visualizer.py  # Emotional-arc plots (intensity + stacked area)
-│   ├── summarizer.py          # Phase 3 — "anchor and compress" summarization
-│   ├── tts_engine.py          # Phase 4 — XTTS-v2 + Bark dual-engine TTS
-│   ├── audio_assembler.py     # Phase 5/6 — MP3 stitching, SRT subtitles, cover art
-│   └── pipeline.py            # End-to-end orchestrator + CLI
-├── notebooks/
-│   ├── week1_setup_and_foundation.ipynb     # Phase 1 walkthrough
-│   ├── week2_3_emotion_and_summary.ipynb    # Phases 2-3 walkthrough
-│   ├── week4_5_tts_and_assembly.ipynb       # Phases 4-5 walkthrough
-│   └── week6_full_pipeline_demo.ipynb       # Full end-to-end demo
-├── data/                      # Story files & intermediate JSON (gitignored)
-├── outputs/                   # Generated audio & plots (gitignored)
-└── requirements.txt
-```
-
----
-
-## Getting started
-
-### Requirements
-
-- Python 3.10+
-- ffmpeg (`brew install ffmpeg` on macOS, `apt-get install ffmpeg` on Linux)
-- For the TTS stages: a GPU is strongly recommended (Google Colab's free tier
-  works well). Phases 1-3 run fine on CPU.
-
-### Setup
+### 1. Clone &amp; install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/emotional-audiobook.git
-cd emotional-audiobook
+git clone https://github.com/WWKMihiranga/emotion-aware-audiobook.git
+cd emotion-aware-audiobook
 
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate         # Windows: .venv\Scripts\activate
+pip install --upgrade pip
 pip install -r requirements.txt
+
+# Audio export needs ffmpeg
+brew install ffmpeg               # macOS
+# sudo apt-get install ffmpeg     # Linux
 ```
 
-### Run the pipeline
-
-As a command-line tool:
+### 2. Run the pipeline
 
 ```bash
-# Full pipeline (needs GPU for TTS)
-python -m src.pipeline data/raw/gift_of_the_magi.txt --title "The Gift of the Magi"
-
-# Phases 1-3 only — emotion analysis + summary, no audio (CPU is fine)
+# Local - phases 1–3 only (no GPU needed, ~5 minutes)
 python -m src.pipeline data/raw/gift_of_the_magi.txt --no-tts
 
-# XTTS only — skip the slower Bark engine
+# Full pipeline - needs GPU for phases 4–5 (use Google Colab T4 free tier)
+python -m src.pipeline data/raw/gift_of_the_magi.txt \
+    --title "The Gift of the Magi" \
+    --author "O. Henry"
+
+# Speed mode - XTTS only (3× faster, less expressive)
 python -m src.pipeline data/raw/gift_of_the_magi.txt --no-bark
 ```
 
-Or explore step by step in the notebooks — start with
-`notebooks/week6_full_pipeline_demo.ipynb` for the full picture.
+### 3. Find your audiobook
+
+```
+outputs/<story_key>/
+  ├── <story_key>.mp3              ← 🎧 the audiobook itself (with cover art)
+  ├── <story_key>.srt              ← 🔤 synced subtitles
+  ├── <story_key>_intensity.png    ← 📈 the emotion arc (also embedded as cover)
+  ├── <story_key>_arc.png          ← 🌈 stacked emotion distribution
+  ├── <story_key>_segmented.json   ← phase 1 output
+  ├── <story_key>_analyzed.json    ← phase 2 output
+  └── <story_key>_summary.json     ← phase 3 output
+```
+
+> 💡 Open the MP3 in VLC - it auto-loads the SRT since they share a basename.
 
 ---
 
-## Design decisions & engineering notes
+## 📓 Notebooks (for exploration &amp; demos)
 
-A few choices worth calling out:
-
-- **Memory discipline.** The emotion model and summarizer are never held in
-  RAM at the same time — each is explicitly loaded and unloaded. This keeps the
-  pipeline runnable on a 16 GB machine.
-
-- **Caching everywhere.** Every phase writes its output to disk and skips itself
-  on re-run. TTS results are cached *per segment and per engine*, so switching
-  from XTTS-only to the full Bark run only re-synthesizes the ~10 anchor
-  sentences rather than the whole story.
-
-- **Anthology handling.** Public-domain stories on Project Gutenberg often come
-  bundled in multi-story anthology files. The text loader can extract a single
-  named story section, so "The Tell-Tale Heart" doesn't get processed as the
-  entire collected works of Poe.
-
-- **Graceful degradation.** If the expressive TTS engine fails on a segment
-  (out-of-memory, model hiccup), that segment falls back to the faster engine
-  automatically rather than failing the whole run.
-
-- **Bimodal-distribution fix in anchor selection.** A naive percentile cutoff
-  for "emotional peaks" breaks on mostly-neutral text, where the intensity
-  distribution is bimodal — the cutoff lets baseline-noise sentences through.
-  Anchor selection requires *both* a percentile threshold and an absolute
-  intensity floor.
+| Notebook | What it's for |
+|---|---|
+| [`week1_setup_and_foundation.ipynb`](notebooks/week1_setup_and_foundation.ipynb) | Walkthrough of text loading + segmentation |
+| [`week2_3_emotion_and_summary.ipynb`](notebooks/week2_3_emotion_and_summary.ipynb) | Inspect emotion distributions, intense sentences, the anchor/bridge structure |
+| [`week4_5_tts_and_assembly.ipynb`](notebooks/week4_5_tts_and_assembly.ipynb) | Cell-by-cell control over TTS engines - useful for debugging Bark |
+| [`week6_full_pipeline_demo.ipynb`](notebooks/week6_full_pipeline_demo.ipynb) | **The showcase.** One-call run of every phase with prose explanations |
 
 ---
 
-## Test stories
+## 🛠️ Tech Stack
 
-The pipeline is developed and tested on three public-domain short stories, each
-chosen for a distinct emotional arc:
+<div align="center">
 
-- **The Gift of the Magi** (O. Henry) — tenderness → surprise → bittersweet joy
-- **The Necklace** (Guy de Maupassant) — pride → despair → bitter revelation
-- **The Tell-Tale Heart** (Edgar Allan Poe) — calm → mounting dread → frenzy
+| Layer | Tools |
+|:-:|:--|
+| 🐍 **Core** | Python 3.10+, PyTorch 2.4, NumPy |
+| 🤗 **NLP Models** | `j-hartmann/emotion-english-distilroberta-base`, `sshleifer/distilbart-cnn-12-6` |
+| 🗣️ **Speech Synthesis** | Coqui TTS (XTTS-v2), Suno Bark |
+| 🎵 **Audio** | `pydub`, `scipy`, `ffmpeg`, `mutagen` (ID3) |
+| 📊 **Visualisation** | `matplotlib` |
+| 📝 **Text Processing** | `nltk`, `regex` |
+| 🧪 **Notebook env** | Jupyter, Google Colab (GPU phases) |
 
-All are fetched automatically from Project Gutenberg by `story_downloader.py`.
-
----
-
-## Limitations & honest caveats
-
-- The emotion model is trained on general English and has known quirks on
-  older/formal prose — it tends to over-predict `disgust` on 19th-century
-  narration, for example.
-- Bark's voice consistency across separate calls is imperfect even with a
-  pinned speaker preset; the narrator can shift slightly between anchor
-  segments.
-- TTS quality and speed depend heavily on hardware. On CPU, Bark can take
-  minutes per sentence.
-- This is a learning/portfolio project, not production software — there's no
-  hosted service, no test suite beyond manual verification, and the model
-  choices favor "runs on a laptop" over "best possible quality."
+</div>
 
 ---
 
-## Possible future work
+## 📂 Project Structure
 
-- Fine-tune the emotion classifier on literary/narrative text
-- Per-segment voice-tone control instead of binary engine routing
-- A hosted web version where users process their own stories
-- Better trailing-silence detection for Bark output
+```
+emotional-audiobook/
+├── src/
+│   ├── pipeline.py            # End-to-end orchestrator + CLI
+│   ├── text_loader.py         # Phase 1 · Gutenberg-aware text loader
+│   ├── segmenter.py           # Phase 1 · sentence/paragraph splitting
+│   ├── emotion_analyzer.py    # Phase 2 · 7-class emotion classifier
+│   ├── emotion_visualizer.py  # Phase 2 · arc + intensity plots
+│   ├── summarizer.py          # Phase 3 · anchor-and-compress
+│   ├── tts_engine.py          # Phase 4 · dual-engine TTS (XTTS + Bark)
+│   ├── audio_assembler.py     # Phase 5 · stitching + ID3 cover art
+│   └── story_downloader.py    # Utility · Project Gutenberg fetcher
+├── notebooks/                 # Demo & exploration notebooks (weeks 1–6)
+├── outputs/                   # Generated arcs, MP3s, SRTs (git-ignored)
+├── data/                      # Raw + processed story text
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
-- Story texts from [Project Gutenberg](https://www.gutenberg.org/)
-- Emotion model by [j-hartmann](https://huggingface.co/j-hartmann/emotion-english-distilroberta-base)
-- Summarization model by [sshleifer](https://huggingface.co/sshleifer/distilbart-cnn-12-6)
-- TTS via [Coqui TTS](https://github.com/coqui-ai/TTS) and [Suno Bark](https://github.com/suno-ai/bark)
+This project stands on incredible open work:
+
+- 🤗 **Hugging Face** for `transformers` and the model hub
+- 🎙️ **Coqui** for XTTS-v2
+- 🐶 **Suno** for Bark
+- 📚 **Project Gutenberg** for the public-domain stories used in development
+- 🎓 Built originally as a six-week university coursework project
 
 ---
 
-## License
+## 📜 License
 
-This project is released under the MIT License — see `LICENSE` for details.
+This project is released under the **MIT License** - see [LICENSE](LICENSE) for details.
 
-*Note: the underlying models and story texts have their own licenses. Project
-Gutenberg texts are public domain in the US; the Coqui XTTS-v2 model is under a
-non-commercial license. Check each before any commercial use.*
+The underlying ML models (XTTS-v2, Bark, DistilRoBERTa, DistilBART) carry their own licenses; please review them before commercial use.
+
+---
+
+<div align="center">
+
+### 🌱 If this project resonates with you, a ⭐ on the repo would mean a lot.
+
+<sub>Built with curiosity, caffeine, and a strong opinion that audiobooks should make you *feel* something.</sub>
+
+</div>
